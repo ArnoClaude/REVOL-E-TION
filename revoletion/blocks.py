@@ -1176,6 +1176,12 @@ class GridMarket(SubBlock):
             self.equal_prices = False
             utils.transform_scalar_var(self, 'opex_spec_s2g')
 
+        # CO2 emission factor (kg CO2 / kWh) for grid imports
+        # Default to typical German grid mix if not specified
+        # TODO arno: check whether 0.4 is a good default
+        if not hasattr(self, 'co2_spec_g2s'):
+            self.co2_spec_g2s = 0.4  # kg CO2 / kWh (approximate German grid average)
+
         self.calc_opex_ep_spec()
 
     def add_power_trace(self):

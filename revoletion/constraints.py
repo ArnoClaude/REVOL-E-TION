@@ -30,6 +30,9 @@ class CustomConstraints:
         # Limit initial investment costs
         self.limit_invest_costs(model)
 
+        # Limit total CO2 emissions from grid imports
+        self.limit_co2_emissions(model)
+
     def add_equal_invests(self, invests):
         # Add a list of investment variables represented as dicts containing the start and end node of a flow
         self.equal_invests.append(invests)
@@ -289,3 +292,42 @@ class CustomConstraints:
             _limit_invests(m=model,
                            block=model.CUSTOM_CONSTRAINTS.LIMIT_INVESTS,
                            name='limit_invest_costs')
+
+    def limit_co2_emissions(self, model):
+        # Goal:     Limit total CO2 emissions from grid imports to a specified maximum value
+        # Approach: Sum all grid imports (g2s flows) multiplied by their CO2 emission factors and constrain to max
+        model.CUSTOM_CONSTRAINTS.LIMIT_CO2 = po.Block()
+
+        def _limit_co2(m, block, name):
+            def _limit_co2_rule(block):
+                total_co2 = 0
+
+                # Get timestep duration in hours (pre-calculated by scenario)
+                timestep_hours = self.scenario.timestep_hours
+
+                # Sum CO2 emissions from all GridMarket imports (g2s = grid-to-system)
+                for grid in [blk for blk in self.scenario.blocks.values()
+                            if isinstance(blk, blocks.GridConnection)]:
+                    for market in grid.subblocks.values():
+                        # Get CO2 factor for this market (kg CO2 / kWh), default to 0 if not specified
+                        co2_factor = getattr(market, 'co2_spec_g2s', 0)
+
+                        if co2_factor > 0:
+                            # Sum energy imported from this market across all timesteps
+                            # market.src = source node, grid.bus = grid bus
+                            # Power (W) * timestep (h) / 1000 = energy (kWh)
+                            for p, ts in m.TIMEINDEX:
+                                total_co2 += (m.flow[market.src, grid.bus, ts]
+                                            * timestep_hours
+                                            * co2_factor
+                                            / 1000)  # Convert W to kW
+
+                return total_co2 <= self.scenario.co2_max
+
+            setattr(block, name, po.Constraint(rule=_limit_co2_rule))
+
+        # Only apply constraint if co2_max is specified (not None)
+        if hasattr(self.scenario, 'co2_max') and self.scenario.co2_max is not None:
+            _limit_co2(m=model,
+                      block=model.CUSTOM_CONSTRAINTS.LIMIT_CO2,
+                      name='limit_co2_emissions')
