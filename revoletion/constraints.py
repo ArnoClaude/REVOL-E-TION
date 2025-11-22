@@ -322,12 +322,21 @@ class CustomConstraints:
                                             * co2_factor
                                             / 1000)  # Convert W to kW
 
+                # DEBUG: Log the constraint expression (only if total_co2 is numeric, not symbolic)
+                # Note: This won't print during constraint construction, only during solve
                 return total_co2 <= self.scenario.co2_max
 
             setattr(block, name, po.Constraint(rule=_limit_co2_rule))
 
         # Only apply constraint if co2_max is specified (not None)
         if hasattr(self.scenario, 'co2_max') and self.scenario.co2_max is not None:
+            print(f"DEBUG [CO2 Constraint]: Adding CO2 emission constraint")
+            print(f"  - CO2 limit (co2_max): {self.scenario.co2_max} kg")
+            print(f"  - Timestep hours: {self.scenario.timestep_hours}")
+            print(f"  - This is a HARD constraint (must be satisfied by solver)")
             _limit_co2(m=model,
                       block=model.CUSTOM_CONSTRAINTS.LIMIT_CO2,
                       name='limit_co2_emissions')
+        else:
+            co2_val = getattr(self.scenario, 'co2_max', 'ATTRIBUTE_MISSING')
+            print(f"DEBUG [CO2 Constraint]: NOT adding CO2 constraint (co2_max = {co2_val})")
