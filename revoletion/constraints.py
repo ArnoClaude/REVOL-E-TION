@@ -310,7 +310,7 @@ class CustomConstraints:
                             if isinstance(blk, blocks.GridConnection)]:
                     for market in grid.subblocks.values():
                         # Get CO2 factor for this market (kg CO2 / kWh), default to 0 if not specified
-                        co2_factor = getattr(market, 'co2_spec_g2s', 0)
+                        co2_factor = getattr(market, 'co2_spec_g2s', 0.4)
 
                         if co2_factor > 0:
                             # Sum energy imported from this market across all timesteps
