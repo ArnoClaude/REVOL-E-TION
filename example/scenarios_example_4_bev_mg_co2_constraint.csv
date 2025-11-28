@@ -1,26 +1,26 @@
-block,key,icev,bev_grid,bev_mg,bev_mg_rh
+block,key,bev_mg_1,bev_mg_2,bev_mg_3,bev_mg_4
 scenario,starttime,1.1.2018,1.1.2018,1.1.2018,1.1.2018
 scenario,timestep,15min,15min,15min,15min
 scenario,sim_duration,50,50,50,50
-scenario,prj_duration,25,25,25,25
+scenario,prj_duration,5,5,5,5
 scenario,compensate_sim_prj,True,True,True,True
 scenario,strategy,go,go,go,go
-scenario,len_ph,None,None,None,48
-scenario,len_ch,None,None,None,12
+scenario,len_ph,None,None,None,None
+scenario,len_ch,None,None,None,None
 scenario,truncate_ph,True,True,True,True
 scenario,invest_max,None,None,None,None
-scenario,co2_max,1000,100,10,1
+scenario,co2_max,100,10,1,0.1
 scenario,wacc,0.09,0.09,0.09,0.09
 scenario,currency,USD,USD,USD,USD
 scenario,latitude,48.2652,48.2652,48.2652,48.2652
 scenario,longitude,11.6686,11.6686,11.6686,11.6686
 scenario,cost_eps,1.00E-8,1.00E-8,1.00E-8,1.00E-8
 scenario,filename_mapper,mapper_timeframe,mapper_timeframe,mapper_timeframe,mapper_timeframe
-scenario,blocks,"{'dem': 'FixedDemand', 'grid': 'GridConnection', 'icev': 'ICEVSystem'}","{'dem': 'FixedDemand', 'grid': 'GridConnection', 'bev': 'VehicleCommoditySystem', 'brs': 'BatteryCommoditySystem'}","{'dem': 'FixedDemand', 'grid': 'GridConnection', 'pv': 'PVSource', 'ess': 'StationaryEnergyStorage', 'bev': 'VehicleCommoditySystem', 'brs': 'BatteryCommoditySystem'}","{'dem': 'FixedDemand', 'grid': 'GridConnection', 'pv': 'PVSource', 'ess': 'StationaryEnergyStorage', 'bev': 'VehicleCommoditySystem', 'brs': 'BatteryCommoditySystem'}"
-core,size_acdc_existing,0,0,0,10000
+scenario,blocks,"{'dem': 'FixedDemand', 'grid': 'GridConnection', 'pv': 'PVSource', 'ess': 'StationaryEnergyStorage', 'bev': 'VehicleCommoditySystem', 'brs': 'BatteryCommoditySystem'}","{'dem': 'FixedDemand', 'grid': 'GridConnection', 'pv': 'PVSource', 'ess': 'StationaryEnergyStorage', 'bev': 'VehicleCommoditySystem', 'brs': 'BatteryCommoditySystem'}","{'dem': 'FixedDemand', 'grid': 'GridConnection', 'pv': 'PVSource', 'ess': 'StationaryEnergyStorage', 'bev': 'VehicleCommoditySystem', 'brs': 'BatteryCommoditySystem'}","{'dem': 'FixedDemand', 'grid': 'GridConnection', 'pv': 'PVSource', 'ess': 'StationaryEnergyStorage', 'bev': 'VehicleCommoditySystem', 'brs': 'BatteryCommoditySystem'}"
+core,size_acdc_existing,0,0,0,0
 core,capex_existing_acdc,True,True,True,True
 core,size_acdc_max,None,None,None,None
-core,invest_acdc,False,True,True,False
+core,invest_acdc,True,True,True,True
 core,size_dcac_existing,equal,equal,equal,equal
 core,capex_existing_dcac,True,True,True,True
 core,size_dcac_max,equal,equal,equal,equal
@@ -39,9 +39,9 @@ dem,crev_spec,3e-05,3e-05,3e-05,3e-05
 wind,size_existing,0,0,0,0
 wind,capex_existing,True,True,True,True
 wind,size_max,None,None,None,None
-wind,invest,False,True,True,False
+wind,invest,True,True,True,True
 wind,system,ac,ac,ac,ac
-wind,data_source,None,None,pv,pv
+wind,data_source,pv,pv,pv,pv
 wind,height,50,50,50,50
 wind,filename,wind_timeseries,wind_timeseries,wind_timeseries,wind_timeseries
 wind,capex_spec,2.8,2.8,2.8,2.8
@@ -66,7 +66,7 @@ pv,eff,0.95,0.95,0.95,0.95
 gen,size_existing,0,0,0,0
 gen,capex_existing,True,True,True,True
 gen,size_max,None,None,None,None
-gen,invest,False,True,True,False
+gen,invest,True,True,True,True
 gen,system,ac,ac,ac,ac
 gen,capex_spec,0.261,0.261,0.261,0.261
 gen,mntex_spec,0.03,0.03,0.03,0.03
@@ -74,10 +74,10 @@ gen,opex_spec,0.0009,0.0009,0.0009,0.0009
 gen,ls,10,10,10,10
 gen,ccr,1,1,1,1
 gen,eff,1,1,1,1
-grid,size_g2s_existing,0,0,0,43500
+grid,size_g2s_existing,0,0,0,0
 grid,capex_existing_g2s,True,True,True,True
 grid,size_g2s_max,None,None,None,None
-grid,invest_g2s,True,True,True,False
+grid,invest_g2s,True,True,True,True
 grid,size_s2g_existing,equal,equal,equal,equal
 grid,capex_existing_s2g,True,True,True,True
 grid,size_s2g_max,equal,equal,equal,equal
@@ -94,7 +94,7 @@ grid,filename_markets,None,None,None,None
 grid,res_only,False,False,False,False
 grid,opex_spec_g2s,grid_opex_g2s,grid_opex_g2s,grid_opex_g2s,grid_opex_g2s
 grid,opex_spec_s2g,grid_opex_s2g,grid_opex_s2g,grid_opex_s2g,grid_opex_s2g
-ess,size_existing,0,0,10000,10000
+ess,size_existing,10000,10000,10000,10000
 ess,capex_existing,True,True,True,True
 ess,size_max,None,None,None,None
 ess,invest,True,True,True,True
@@ -102,7 +102,7 @@ ess,system,dc,dc,dc,dc
 ess,res_only,False,False,False,False
 ess,aging,True,True,True,True
 ess,chemistry,lfp,lfp,lfp,lfp
-ess,temp_battery,25,25,pv,pv
+ess,temp_battery,pv,pv,pv,pv
 ess,capex_spec,0.25,0.25,0.25,0.25
 ess,mntex_spec,0.00625,0.00625,0.00625,0.00625
 ess,opex_spec,0,0,0,0
@@ -132,7 +132,7 @@ bev,system,ac,ac,ac,ac
 bev,rex_cs,brs,brs,brs,brs
 bev,aging,True,True,True,True
 bev,chemistry,nmc,nmc,nmc,nmc
-bev,temp_battery,25,25,pv,pv
+bev,temp_battery,pv,pv,pv,pv
 bev,ls,10,10,10,10
 bev,q_loss_cal_init,0,0,0,0
 bev,q_loss_cyc_init,0,0,0,0
@@ -178,7 +178,7 @@ brs,power_lim_static,11000,11000,11000,11000
 brs,system,ac,ac,ac,ac
 brs,aging,True,True,True,True
 brs,chemistry,nmc,nmc,nmc,nmc
-brs,temp_battery,25,25,pv,pv
+brs,temp_battery,pv,pv,pv,pv
 brs,ls,10,10,10,10
 brs,q_loss_cal_init,0,0,0,0
 brs,q_loss_cyc_init,0,0,0,0

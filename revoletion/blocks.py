@@ -911,6 +911,9 @@ class GridConnection(InvestBlock):
 
         self.calc_energy_source_sink()
 
+        # Calculate CO2 emissions
+        self.calc_co2()
+
     def calc_opex_ep_spec(self):
         """
         Method has to be callable from InvestBlock.__init__, but energy based opex is in GridMarket
@@ -929,6 +932,44 @@ class GridConnection(InvestBlock):
             self.opex_sim_energy += market.opex_sim
 
         self.expenditures.loc['opex', 'sim'] = self.opex_sim_peak + self.opex_sim_energy
+
+    def calc_co2(self):
+        """Calculate CO2 emissions from grid imports (g2s)."""
+        # emission factor (kg/kWh)
+        co2_factor = 0.4
+        if self.subblocks:
+            first_market = list(self.subblocks.values())[0]
+            co2_factor = getattr(first_market, "co2_spec_g2s", co2_factor)
+
+        self.co2_sim_kg = 0.0
+        self.co2_prj_kg = 0.0
+
+        # Debug: print what flows we're seeing
+        print(f"\n=== calc_co2() for {self.name} ===")
+        if hasattr(self, "flows") and len(self.flows):
+            if "in" in self.flows:
+                print(f"flows['in'] sum: {self.flows['in'].sum():.2f} W")
+                print(f"flows['in'] energy: {self.flows['in'].sum() * self.scenario.timestep_hours / 1000:.2f} kWh")
+            if "out" in self.flows:
+                print(f"flows['out'] sum: {self.flows['out'].sum():.2f} W")
+                print(f"flows['out'] energy: {self.flows['out'].sum() * self.scenario.timestep_hours / 1000:.2f} kWh")
+
+        # --- SIM: integrate actual grid-import power time series ---
+        if hasattr(self, "flows") and len(self.flows) and "out" in self.flows:
+            # flows['out'] is grid imports (power in W); W * h = Wh; /1000 = kWh
+            grid_import_kwh_sim = (self.flows["out"].clip(lower=0).sum() * self.scenario.timestep_hours) / 1000.0
+            self.co2_sim_kg = grid_import_kwh_sim * co2_factor
+            print(f"Using flows['out']: CO2 = {self.co2_sim_kg:.2f} kg")
+
+        # --- PRJ: extrapolate using the same ratio your energies uses (optional) ---
+        if hasattr(self, "energies") and self.energies.loc["del", "sim"] > 0:
+            extrap = self.energies.loc["del", "prj"] / self.energies.loc["del", "sim"]
+            self.co2_prj_kg = self.co2_sim_kg * extrap
+        else:
+            self.co2_prj_kg = 0.0
+
+        self.co2_sim_tonnes = self.co2_sim_kg / 1000.0
+        self.co2_prj_tonnes = self.co2_prj_kg / 1000.0
 
     def get_ch_results(self, horizon, *_):
         self.flows.loc[horizon.dti_ch, 'in'] = sum([horizon.results[(inflow, self.bus)]['sequences']['flow'][horizon.dti_ch]
@@ -972,6 +1013,66 @@ class GridConnection(InvestBlock):
         super().get_timeseries_results()  # this goes up to the Block class
         for market in self.subblocks.values():
             market.get_timeseries_results()
+
+    def add_co2_trace(self):
+        """Add CO2 emission traces to dispatch plot."""
+
+        if not hasattr(self, 'flows') or len(self.flows) == 0:
+            return
+
+        # Get emission factor
+        co2_factor = 0.4  # Default
+        if self.subblocks:
+            first_market = list(self.subblocks.values())[0]
+            # TODO aclaude: co2_factor instead of 0.4 passed as third argument. Make sure it works
+            co2_factor = getattr(first_market, 'co2_spec_g2s', co2_factor)
+
+        # Calculate CO2 timeseries
+        grid_import_kw = self.flows['out'] / 1000  # W → kW (flows['out'] = grid imports)
+        co2_rate_kg_per_h = grid_import_kw * co2_factor  # kg/h
+        co2_cumulative_kg = (co2_rate_kg_per_h * self.scenario.timestep_hours).cumsum()
+
+        # Trace 1: Cumulative CO2
+        self.scenario.figure.add_trace(
+            go.Scatter(
+                x=self.flows.index,
+                y=co2_cumulative_kg,
+                mode='lines',
+                name=f'{self.name} CO2 cumulative (kg)',
+                line=dict(width=2, dash='dash', color='brown'),
+                visible='legendonly'
+            ),
+            secondary_y=True
+        )
+
+        # Trace 2: Instantaneous rate
+        self.scenario.figure.add_trace(
+            go.Scatter(
+                x=self.flows.index,
+                y=co2_rate_kg_per_h,
+                mode='lines',
+                name=f'{self.name} CO2 rate (kg/h)',
+                line=dict(width=1, color='orange'),
+                visible='legendonly'
+            ),
+            secondary_y=True
+        )
+
+        # Trace 3: CO2 limit line
+        if hasattr(self.scenario, 'co2_max') and self.scenario.co2_max is not None:
+            co2_max_kg = self.scenario.co2_max * 1000  # tonnes → kg
+
+            self.scenario.figure.add_trace(
+                go.Scatter(
+                    x=[self.flows.index[0], self.flows.index[-1]],
+                    y=[co2_max_kg, co2_max_kg],
+                    mode='lines',
+                    name=f'CO2 limit ({self.scenario.co2_max} t)',
+                    line=dict(width=2, dash='dot', color='red'),
+                    visible=True  # Always visible
+                ),
+                secondary_y=True
+            )
 
     def initialize_markets(self):
         # get information about GridMarkets specified in the scenario file

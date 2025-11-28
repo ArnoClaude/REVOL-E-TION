@@ -296,47 +296,33 @@ class CustomConstraints:
     def limit_co2_emissions(self, model):
         # Goal:     Limit total CO2 emissions from grid imports to a specified maximum value
         # Approach: Sum all grid imports (g2s flows) multiplied by their CO2 emission factors and constrain to max
+        co2_max_tonnes = getattr(self.scenario, "co2_max", None)
+        if co2_max_tonnes is None:
+            return
+
         model.CUSTOM_CONSTRAINTS.LIMIT_CO2 = po.Block()
+        blk = model.CUSTOM_CONSTRAINTS.LIMIT_CO2
 
-        def _limit_co2(m, block, name):
-            def _limit_co2_rule(block):
-                total_co2 = 0
+        timestep_hours = self.scenario.timestep_hours
+        co2_max_kg = float(co2_max_tonnes) * 1000.0  # tonnes -> kg
 
-                # Get timestep duration in hours (pre-calculated by scenario)
-                timestep_hours = self.scenario.timestep_hours
+        # Pre-collect import arcs and their emission factors to keep the expression clean
+        import_arcs = []
+        for grid in (b for b in self.scenario.blocks.values() if isinstance(b, blocks.GridConnection)):
+            for market in grid.subblocks.values():
+                factor = getattr(market, "co2_spec_g2s", 0.4)  # kg/kWh
+                if factor and factor > 0:
+                    import_arcs.append((market.src, grid.bus, float(factor)))
 
-                # Sum CO2 emissions from all GridMarket imports (g2s = grid-to-system)
-                for grid in [blk for blk in self.scenario.blocks.values()
-                            if isinstance(blk, blocks.GridConnection)]:
-                    for market in grid.subblocks.values():
-                        # Get CO2 factor for this market (kg CO2 / kWh), default to 0 if not specified
-                        co2_factor = getattr(market, 'co2_spec_g2s', 0.4)
+        def _total_co2_kg():
+            # flow is W; W * h / 1000 = kWh; kWh * (kg/kWh) = kg
+            return sum(
+                model.flow[src, bus, ts] * timestep_hours / 1000.0 * factor
+                for (p, ts) in model.TIMEINDEX
+                for (src, bus, factor) in import_arcs
+            )
 
-                        if co2_factor > 0:
-                            # Sum energy imported from this market across all timesteps
-                            # market.src = source node, grid.bus = grid bus
-                            # Power (W) * timestep (h) / 1000 = energy (kWh)
-                            for p, ts in m.TIMEINDEX:
-                                total_co2 += (m.flow[market.src, grid.bus, ts]
-                                            * timestep_hours
-                                            * co2_factor
-                                            / 1000)  # Convert W to kW
+        blk.limit_co2_emissions = po.Constraint(expr=_total_co2_kg() <= co2_max_kg)
 
-                # DEBUG: Log the constraint expression (only if total_co2 is numeric, not symbolic)
-                # Note: This won't print during constraint construction, only during solve
-                return total_co2 <= self.scenario.co2_max
-
-            setattr(block, name, po.Constraint(rule=_limit_co2_rule))
-
-        # Only apply constraint if co2_max is specified (not None)
-        if hasattr(self.scenario, 'co2_max') and self.scenario.co2_max is not None:
-            print(f"DEBUG [CO2 Constraint]: Adding CO2 emission constraint")
-            print(f"  - CO2 limit (co2_max): {self.scenario.co2_max} kg")
-            print(f"  - Timestep hours: {self.scenario.timestep_hours}")
-            print(f"  - This is a HARD constraint (must be satisfied by solver)")
-            _limit_co2(m=model,
-                      block=model.CUSTOM_CONSTRAINTS.LIMIT_CO2,
-                      name='limit_co2_emissions')
-        else:
-            co2_val = getattr(self.scenario, 'co2_max', 'ATTRIBUTE_MISSING')
-            print(f"DEBUG [CO2 Constraint]: NOT adding CO2 constraint (co2_max = {co2_val})")
+        # Store arc info for post-solve diagnostics
+        blk.import_arcs = import_arcs

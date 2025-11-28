@@ -219,6 +219,33 @@ class PredictionHorizon:
         self.scenario.logger.info(f'Horizon {self.index + 1} of {self.scenario.nhorizons} - '
                                   f'Model built, starting optimization')
         results = self.model.solve(solver=self.scenario.run.solver, solve_kwargs={'tee': self.scenario.run.debugmode})
+
+        from pyomo.environ import value
+
+        # Only print CO2 constraint diagnostics if constraint exists
+        if hasattr(self.model.CUSTOM_CONSTRAINTS, 'LIMIT_CO2'):
+            c = self.model.CUSTOM_CONSTRAINTS.LIMIT_CO2.limit_co2_emissions
+            blk = self.model.CUSTOM_CONSTRAINTS.LIMIT_CO2
+
+            print("=== CO2 constraint check ===")
+            print("upper (kg):", value(c.upper))
+            print("body  (kg):", value(c.body))
+            print("slack (kg):", value(c.upper - c.body))
+            print("active?:", c.active)
+
+            # Debug: show per-arc CO2 contributions
+            print("\nPer-arc CO2 breakdown:")
+            timestep_hours = self.scenario.timestep_hours
+            for (src, bus, factor) in blk.import_arcs:
+                arc_co2 = sum(
+                    value(self.model.flow[src, bus, ts]) * timestep_hours / 1000.0 * factor
+                    for (p, ts) in self.model.TIMEINDEX
+                )
+                arc_energy = sum(
+                    value(self.model.flow[src, bus, ts]) * timestep_hours / 1000.0
+                    for (p, ts) in self.model.TIMEINDEX
+                )
+                print(f"  {src.label} → {bus.label}: {arc_energy:.2f} kWh, {arc_co2:.2f} kg CO2 (factor={factor})")
         if (results.solver.status == po.SolverStatus.ok) and \
                 (results.solver.termination_condition == po.TerminationCondition.optimal):
             self.scenario.logger.info(f'Horizon {self.index + 1} of {self.scenario.nhorizons} - '
@@ -545,6 +572,8 @@ class Scenario:
                 block.add_soc_trace()
             if hasattr(block, 'add_curtailment_trace'):  # should affect PVSource and WindSource
                 block.add_curtailment_trace()
+            if hasattr(block, 'add_co2_trace'):  # should affect GridConnection
+                block.add_co2_trace()
 
         self.figure.update_layout(plot_bgcolor='white')
         self.figure.update_xaxes(title='Local Time',
