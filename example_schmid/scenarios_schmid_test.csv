@@ -43,10 +43,10 @@ pv,invest,True
 pv,data_source,PVGIS API
 pv,filename,pvgis_api_params
 pv,system,dc
-pv,capex_spec,0.5
+pv,capex_spec,1.0
 pv,mntex_spec,0.01509
 pv,opex_spec,0
-pv,ls,25
+pv,ls,30
 pv,ccr,1
 pv,eff,0.95
 grid,size_g2s_existing,0
@@ -60,7 +60,7 @@ grid,invest_s2g,equal
 grid,system,ac
 grid,peakshaving,None
 grid,opex_spec_peak,0
-grid,capex_spec,0.1
+grid,capex_spec,0.09896
 grid,mntex_spec,0
 grid,ls,10
 grid,ccr,1
@@ -79,10 +79,10 @@ ess,res_only,False
 ess,aging,True
 ess,chemistry,lfp
 ess,temp_battery,25
-ess,capex_spec,0.25
+ess,capex_spec,0.50
 ess,mntex_spec,0.00625
 ess,opex_spec,0
-ess,ls,10
+ess,ls,15
 ess,eff_roundtrip,0.9
 ess,eff_acdc,0.95
 ess,eff_dcac,0.95
