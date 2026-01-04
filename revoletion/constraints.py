@@ -296,15 +296,15 @@ class CustomConstraints:
     def limit_co2_emissions(self, model):
         # Goal:     Limit total CO2 emissions from grid imports to a specified maximum value
         # Approach: Sum all grid imports (g2s flows) multiplied by their CO2 emission factors and constrain to max
-        co2_max_tonnes = getattr(self.scenario, "co2_max", None)
-        if co2_max_tonnes is None:
+        co2_max_kg = getattr(self.scenario, "co2_max", None)
+        if co2_max_kg is None:
             return
 
         model.CUSTOM_CONSTRAINTS.LIMIT_CO2 = po.Block()
         blk = model.CUSTOM_CONSTRAINTS.LIMIT_CO2
 
         timestep_hours = self.scenario.timestep_hours
-        co2_max_kg = float(co2_max_tonnes) * 1000.0  # tonnes -> kg
+        co2_max_kg = float(co2_max_kg)  # Ensure float (value is already in kg)
 
         # Pre-collect import arcs and their emission factors to keep the expression clean
         import_arcs = []
