@@ -935,8 +935,8 @@ class GridConnection(InvestBlock):
 
     def calc_co2(self):
         """Calculate CO2 emissions from grid imports (g2s)."""
-        # emission factor (kg/kWh)
-        co2_factor = 0.4
+        # emission factor (kg/kWh) - default to UBA 2024: 363 g/kWh
+        co2_factor = 0.35
         if self.subblocks:
             first_market = list(self.subblocks.values())[0]
             co2_factor = getattr(first_market, "co2_spec_g2s", co2_factor)
@@ -1020,11 +1020,11 @@ class GridConnection(InvestBlock):
         if not hasattr(self, 'flows') or len(self.flows) == 0:
             return
 
-        # Get emission factor
-        co2_factor = 0.4  # Default
+        # Get emission factor - default to UBA 2024: 363 g/kWh
+        co2_factor = 0.35
         if self.subblocks:
             first_market = list(self.subblocks.values())[0]
-            # TODO aclaude: co2_factor instead of 0.4 passed as third argument. Make sure it works
+            # co2_factor from parent is now passed through initialize_markets()
             co2_factor = getattr(first_market, 'co2_spec_g2s', co2_factor)
 
         # Calculate CO2 timeseries
@@ -1082,9 +1082,11 @@ class GridConnection(InvestBlock):
                                   index_col=[0])
             markets = markets.map(utils.infer_dtype)
         else:
-            markets = pd.DataFrame(index=['res_only', 'opex_spec_g2s', 'opex_spec_s2g', 'pwr_g2s', 'pwr_s2g'],
+            # Pass co2_spec_g2s from parent GridConnection to the default market
+            co2_factor = getattr(self, 'co2_spec_g2s', 0.35)  # Default: 350 g/kWh (UBA 2024: 363 g/kWh)
+            markets = pd.DataFrame(index=['res_only', 'opex_spec_g2s', 'opex_spec_s2g', 'pwr_g2s', 'pwr_s2g', 'co2_spec_g2s'],
                                    columns=[f'{self.name}_market'],
-                                   data=[self.res_only, self.opex_spec_g2s, self.opex_spec_s2g, None, None])
+                                   data=[self.res_only, self.opex_spec_g2s, self.opex_spec_s2g, None, None, co2_factor])
         # Generate individual GridMarkets instances
         self.subblocks = {market: GridMarket(market, self, markets.loc[:, market])
                           for market in markets.columns}
@@ -1278,10 +1280,9 @@ class GridMarket(SubBlock):
             utils.transform_scalar_var(self, 'opex_spec_s2g')
 
         # CO2 emission factor (kg CO2 / kWh) for grid imports
-        # Default to typical German grid mix if not specified
-        # TODO arno: check whether 0.4 is a good default
+        # Default to German grid average (UBA 2024: 363 g/kWh)
         if not hasattr(self, 'co2_spec_g2s'):
-            self.co2_spec_g2s = 0.4  # kg CO2 / kWh (approximate German grid average)
+            self.co2_spec_g2s = 0.35  # kg CO2 / kWh (UBA 2024: 363 g/kWh, using 350 as conservative)
 
         self.calc_opex_ep_spec()
 

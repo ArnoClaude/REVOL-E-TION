@@ -310,7 +310,7 @@ class CustomConstraints:
         import_arcs = []
         for grid in (b for b in self.scenario.blocks.values() if isinstance(b, blocks.GridConnection)):
             for market in grid.subblocks.values():
-                factor = getattr(market, "co2_spec_g2s", 0.4)  # kg/kWh
+                factor = getattr(market, "co2_spec_g2s", 0.35)  # kg/kWh (UBA 2024: 363 g/kWh)
                 if factor and factor > 0:
                     import_arcs.append((market.src, grid.bus, float(factor)))
 
