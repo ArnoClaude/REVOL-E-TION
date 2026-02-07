@@ -1830,6 +1830,12 @@ class MobileCommodity(SubBlock):
         # actual values are set later in update_input_components for each prediction horizon
         horizon.components.append(self.snk)
 
+        # oemof-solph TIMEPOINTS has T+1 entries, so min/max_storage_level need T+1 values.
+        # Use extend_dti to add one timestep (same pattern as StationaryEnergyStorage).
+        dti_ph_ext = utils.extend_dti(horizon.dti_ph)
+        soc_max = pd.Series(data=self.soc_max, index=dti_ph_ext)
+        soc_min = soc_min.reindex(dti_ph_ext).ffill().bfill()
+
         self.ess = solph.components.GenericStorage(label=f'{self.name}_ess',
                                                    inputs={self.bus: solph.Flow(variable_costs=self.parent.opex_ep_spec[horizon.dti_ph])},
                                                    # cost_eps are needed to prevent storage from being emptied in RH
